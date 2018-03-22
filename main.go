@@ -3,19 +3,21 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/url"
 	"os"
+	"strings"
 
 	"github.com/gorilla/websocket"
 )
 
 type config struct {
 	connected   bool   //indicates the connection status. Always true for now.
+	shortmode   bool   //indicates that the cli shows less or more information everytime the user inputs something
 	host        string //contains the connected host. default value is "No host".
 	path        string
-	messageType int  //indicates which message type is used for writing to the connection.
-	shortmode   bool //indicates that the cli shows less or more information everytime the user inputs something
+	messageType int //indicates which message type is used for writing to the connection.
 }
 
 func (cfg *config) printLineStart() {
@@ -100,6 +102,18 @@ func writeConnection(done chan<- bool, cfg *config, conn *websocket.Conn) {
 	for scanner.Scan() {
 		input := scanner.Text()
 
+		if strings.HasPrefix(input, "from file") {
+			trimmed := strings.TrimSpace(input)
+			fp := trimmed[len("from file")+1:]
+			fmt.Printf("sending from file %s\n", fp)
+			b, err := ioutil.ReadFile(fp)
+			if err != nil {
+				log.Printf("Error reading file %s with error: %s\n", fp, err)
+				continue
+			}
+			input = fmt.Sprintf("%s", b)
+		}
+
 		switch input {
 		case "exit":
 			return
@@ -125,6 +139,7 @@ func writeConnection(done chan<- bool, cfg *config, conn *websocket.Conn) {
 			fmt.Printf("Message type is: %s\n", messageTypeToString(cfg.messageType))
 			cfg.printLineStart()
 			continue
+
 		default:
 			cfg.printLineStart()
 
@@ -145,7 +160,8 @@ func printHelp() {
 	host: prints information about the host the user is connected to
 	mode: prints the currently used message type
 	mode text: changes the message type to text message
-	mode binary: changes the message type to binary message`
+	mode binary: changes the message type to binary message
+	from file "filepath": reads the content of a file and sends it`
 
 	fmt.Printf("%s\n\n", helpText)
 }
