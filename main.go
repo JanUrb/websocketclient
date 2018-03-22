@@ -16,8 +16,8 @@ type config struct {
 	connected   bool   //indicates the connection status. Always true for now.
 	shortmode   bool   //indicates that the cli shows less or more information everytime the user inputs something
 	host        string //contains the connected host. default value is "No host".
-	path        string
-	messageType int //indicates which message type is used for writing to the connection.
+	path        string //the path on the host
+	messageType int    //indicates which message type is used for writing to the connection.
 }
 
 func (cfg *config) printLineStart() {
