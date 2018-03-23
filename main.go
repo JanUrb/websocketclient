@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -50,16 +51,16 @@ func messageTypeToString(messageType int) string {
 func main() {
 	done := make(chan bool)
 
-	serverUrl := os.Args[1]
-	if serverUrl == "" {
+	serverURL := os.Args[1]
+	if serverURL == "" {
 		log.Println("No url given")
 		return
 	}
 
-	index := strings.Index(serverUrl, "/")
+	index := strings.Index(serverURL, "/")
 
-	host := serverUrl[0:index]
-	path := serverUrl[index:]
+	host := serverURL[0:index]
+	path := serverURL[index:]
 
 	url := url.URL{Scheme: "ws", Host: host, Path: path}
 	conn, _, err := websocket.DefaultDialer.Dial(url.String(), nil)
@@ -77,7 +78,10 @@ func main() {
 		return
 	}
 
-	defer conn.Close()
+	defer func() {
+		err := conn.Close()
+		log.Println("Error while closing connection ", err)
+	}()
 
 	go writeConnection(done, cfg, conn)
 	go readConnection(done, conn)
@@ -182,7 +186,7 @@ func extractFileContent(input string) (string, error) {
 
 	b, err := ioutil.ReadFile(fp)
 	if err != nil {
-		return "", fmt.Errorf("extractFileContent: ", err)
+		return "", errors.New(fmt.Sprint("extractFileContent: ", err))
 	}
 	return fmt.Sprintf("%s", b), nil
 }
