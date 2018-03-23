@@ -50,8 +50,16 @@ func messageTypeToString(messageType int) string {
 func main() {
 	done := make(chan bool)
 
-	host := "localhost:8080"
-	path := "/ws"
+	serverUrl := os.Args[1]
+	if serverUrl == "" {
+		log.Println("No url given")
+		return
+	}
+
+	index := strings.Index(serverUrl, "/")
+
+	host := serverUrl[0:index]
+	path := serverUrl[index:]
 
 	url := url.URL{Scheme: "ws", Host: host, Path: path}
 	conn, _, err := websocket.DefaultDialer.Dial(url.String(), nil)
@@ -83,7 +91,6 @@ func readConnection(done chan<- bool, conn *websocket.Conn) {
 		msgType, msg, err := conn.ReadMessage()
 		if err != nil {
 			log.Println("Error while reading message ", err)
-
 			return
 		}
 
@@ -103,15 +110,15 @@ func writeConnection(done chan<- bool, cfg *config, conn *websocket.Conn) {
 		input := scanner.Text()
 
 		if strings.HasPrefix(input, "from file") {
-			trimmed := strings.TrimSpace(input)
-			fp := trimmed[len("from file")+1:]
-			fmt.Printf("sending from file %s\n", fp)
-			b, err := ioutil.ReadFile(fp)
+
+			content, err := extractFileContent(input)
 			if err != nil {
-				log.Printf("Error reading file %s with error: %s\n", fp, err)
+				log.Println("Error while reading from file ", err)
+				cfg.printLineStart()
 				continue
 			}
-			input = fmt.Sprintf("%s", b)
+			fmt.Printf("sending from file ")
+			input = content
 		}
 
 		switch input {
@@ -164,4 +171,18 @@ func printHelp() {
 	from file "filepath": reads the content of a file and sends it`
 
 	fmt.Printf("%s\n\n", helpText)
+}
+
+func extractFileContent(input string) (string, error) {
+	trimmed := strings.TrimSpace(input)
+	if len(trimmed) == len("from file") {
+		return "", fmt.Errorf("No file given")
+	}
+	fp := trimmed[len("from file")+1:]
+
+	b, err := ioutil.ReadFile(fp)
+	if err != nil {
+		return "", fmt.Errorf("extractFileContent: ", err)
+	}
+	return fmt.Sprintf("%s", b), nil
 }
